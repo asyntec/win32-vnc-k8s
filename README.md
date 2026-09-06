@@ -4,7 +4,7 @@
 [![Security Scan](https://github.com/asyntec/win32-vnc-k8s/actions/workflows/security.yml/badge.svg)](https://github.com/asyntec/win32-vnc-k8s/actions/workflows/security.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org/)
-[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/default/badge)](https://bestpractices.dev/)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14467/badge)](https://www.bestpractices.dev/en/projects/14467)
 
 > **High-density x86 Windows application runtime with HTML5 VNC streaming for Linux containers and Kubernetes (AKS, EKS, GKE, K8s).**
 
