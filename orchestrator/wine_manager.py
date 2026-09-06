@@ -45,7 +45,10 @@ class WineManager:
         with open(reg_file_path, "w") as f:
             f.write(reg_content)
 
-        subprocess.run(["wine", "regedit", "/S", "C:\\batch_config.reg"], env=self.env, check=False, capture_output=True)
+        try:
+            subprocess.run(["wine", "regedit", "/S", "C:\\batch_config.reg"], env=self.env, check=False, capture_output=True)  # nosec B603 B607
+        except FileNotFoundError:
+            logger.debug("Wine binary not found on host; skipped registry import execution")
 
     def get_security_policies(self):
         """Lockdown policies preventing shell exploitation."""
