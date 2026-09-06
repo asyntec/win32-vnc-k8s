@@ -1,0 +1,59 @@
+#!/bin/bash
+# Generic CUPS backend replacement for cups-pdf in rootless container environment
+set -e
+
+# Discovery mode
+if [ "$#" -eq 0 ]; then
+    echo 'file cups-pdf:/ "Virtual PDF Printer" "CUPS-PDF" "MFG:Generic;MDL:CUPS-PDF Printer;DES:Generic CUPS-PDF Printer;CLS:PRINTER;CMD:POSTSCRIPT;"'
+    exit 0
+fi
+
+JOB_ID="$1"
+USER_NAME="$2"
+TITLE="${3:-Document}"
+COPIES="$4"
+OPTIONS="$5"
+INPUT_FILE="$6"
+
+SESSION_ID="${DEVICE_URI#cups-pdf:/}"
+OUT_DIR=""
+
+if [ -n "$SESSION_ID" ] && [ -d "/home/wineuser/sessions/$SESSION_ID/drive_c/Documents" ]; then
+    OUT_DIR="/home/wineuser/sessions/$SESSION_ID/drive_c/Documents"
+elif [ -n "$SESSION_ID" ] && [ -f "/etc/cups/cups-pdf-${SESSION_ID}.conf" ]; then
+    OUT_DIR=$(grep -E '^[[:space:]]*Out[[:space:]]+' "/etc/cups/cups-pdf-${SESSION_ID}.conf" | awk '{print $2}' | tr -d '\r\n')
+fi
+
+if [ -z "$OUT_DIR" ] || [ ! -d "$OUT_DIR" ]; then
+    if [ -d "/home/wineuser/PDF" ]; then
+        OUT_DIR="/home/wineuser/PDF"
+    else
+        OUT_DIR="/home/wineuser"
+    fi
+fi
+
+SAFE_TITLE=$(echo "$TITLE" | sed 's/[^a-zA-Z0-9._-]/_/g' | sed 's/__*/_/g')
+[ -z "$SAFE_TITLE" ] && SAFE_TITLE="Document"
+
+PDF_FILE="$OUT_DIR/${SAFE_TITLE}.pdf"
+if [ -f "$PDF_FILE" ]; then
+    PDF_FILE="$OUT_DIR/${SAFE_TITLE}_$(date +%H%M%S).pdf"
+fi
+
+# Secure atomic write via mktemp in destination directory (avoids shared /tmp race conditions)
+TMP_PDF=$(mktemp "$OUT_DIR/.print_job_XXXXXX.pdf")
+chmod 600 "$TMP_PDF"
+
+# Convert PostScript to PDF via Ghostscript with PDF 1.4 universal compatibility
+if [ -n "$INPUT_FILE" ] && [ -f "$INPUT_FILE" ]; then
+    gs -q -dNOPAUSE -dBATCH -dSAFER -dCompatibilityLevel=1.4 -sDEVICE=pdfwrite -dAutoRotatePages=/PageByPage -dPDFSETTINGS=/prepress -sOutputFile="$TMP_PDF" "$INPUT_FILE"
+else
+    gs -q -dNOPAUSE -dBATCH -dSAFER -dCompatibilityLevel=1.4 -sDEVICE=pdfwrite -dAutoRotatePages=/PageByPage -dPDFSETTINGS=/prepress -sOutputFile="$TMP_PDF" -
+fi
+
+chmod 644 "$TMP_PDF" 2>/dev/null || true
+mv -f "$TMP_PDF" "$PDF_FILE"
+
+echo "PAGE: 1 1" >&2
+echo "INFO: PDF generated successfully at $PDF_FILE" >&2
+exit 0

@@ -1,0 +1,28 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    - cron: '0 4 * * 1'
+
+jobs:
+  bandit:
+    name: Bandit SAST Scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install Bandit
+      run: pip install bandit
+
+    - name: Run Bandit
+      run: bandit -r orchestrator -ll

@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: win32-vnc-k8s
+  labels:
+    app: win32-vnc-k8s
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: win32-vnc-k8s
+  template:
+    metadata:
+      labels:
+        app: win32-vnc-k8s
+    spec:
+      # Block automatic token mounting for enhanced pod security
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/os: linux
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: orchestrator
+        image: win32-vnc-k8s:latest
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        ports:
+        - containerPort: 8000
+          name: http-api
+        - containerPort: 6080
+          name: vnc-ws
+        envFrom:
+        - configMapRef:
+            name: win32-vnc-config
+            optional: true
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+            ephemeral-storage: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "2048Mi"
+            ephemeral-storage: "4Gi"
+        volumeMounts:
+        - name: shm
+          mountPath: /dev/shm
+        - name: tmp-volume
+          mountPath: /tmp
+        - name: sessions
+          mountPath: /home/wineuser/sessions
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 20
+      volumes:
+      - name: shm
+        emptyDir:
+          medium: Memory
+      - name: tmp-volume
+        emptyDir: {}
+      - name: sessions
+        emptyDir: {}
